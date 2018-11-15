@@ -42,7 +42,7 @@ setup(
     keywords=[],
     license='GPLv3',
     scripts=[],
-    install_requires=['addict'],
+    install_requires=['addict', 'fire', 'oauth2client', 'google-auth', 'google-api-python-client', 'httplib2', 'oauthlib', 'requests_oauthlib'],
     dependency_links=[],
     classifiers=['Development Status :: 3 - Alpha', 'Intended Audience :: Developers', 'License :: OSI Approved :: GNU General Public License v3 (GPLv3)', 'Natural Language :: English', 'Programming Language :: Python', 'Programming Language :: Python :: 3'],
     entry_points={'console_scripts': ['umuus_google_oauth = umuus_google_oauth:main']}

@@ -59,6 +59,13 @@ __license__ = 'GPLv3'
 __scripts__ = []
 __install_requires__ = [
     'addict',
+    'fire',
+    'oauth2client',
+    'google-auth',
+    'google-api-python-client',
+    'httplib2',
+    'oauthlib',
+    'requests_oauthlib',
 ]
 __dependency_links__ = [
 ]
