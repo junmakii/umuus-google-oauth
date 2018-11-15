@@ -10,9 +10,13 @@ Installation
 
     $ pip install umuus_google_oauth
 
-$ python umuus_google_oauth.py run \
-    --credential_file 'client_secret_XXXX.apps.googleusercontent.com.json' \
-    --token_file google_access_token.json
+Usage
+-----
+
+    $ python -m umuus_google_oauth run \
+        --credential_file 'client_secret_XXXX.apps.googleusercontent.com.json' \
+        --token_file google_access_token.json
+
 
 Example
 -------

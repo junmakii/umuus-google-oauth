@@ -14,9 +14,13 @@ setup(
  '\n'
  '    $ pip install umuus_google_oauth\n'
  '\n'
- '$ python umuus_google_oauth.py run     --credential_file '
- "'client_secret_XXXX.apps.googleusercontent.com.json'     --token_file "
+ 'Usage\n'
+ '-----\n'
+ '\n'
+ '    $ python -m umuus_google_oauth run         --credential_file '
+ "'client_secret_XXXX.apps.googleusercontent.com.json'         --token_file "
  'google_access_token.json\n'
+ '\n'
  '\n'
  'Example\n'
  '-------\n'
