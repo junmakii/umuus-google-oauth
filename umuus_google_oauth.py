@@ -50,7 +50,6 @@ import apiclient.http
 import oauth2client.client
 import httplib2
 import urllib.parse
-import umuus_class_util
 import requests_oauthlib
 import google.oauth2.credentials
 import fire
