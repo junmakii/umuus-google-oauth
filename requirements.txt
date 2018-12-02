@@ -1,0 +1,13 @@
+attrs
+addict
+requests
+addict
+fire
+oauth2client
+google-auth
+google-api-python-client
+httplib2
+oauthlib
+requests_oauthlib
+attrs
+flask

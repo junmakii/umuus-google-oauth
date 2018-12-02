@@ -5,13 +5,26 @@ umuus-google-oauth
 Installation
 ------------
 
-    $ pip install umuus_google_oauth
+    $ pip install git+https://github.com/junmakii/umuus-google-oauth.git
 
-Usage
------
+    $ pip install addict fire oauth2client google-auth google-api-python-client httplib2 oauthlib requests_oauthlib attrs
 
-    $ python -m umuus_google_oauth run         --credential_file 'client_secret_XXXX.apps.googleusercontent.com.json'         --token_file google_access_token.json
 
+Command Line
+------------
+
+    $ python -m umuus_google_oauth run       --credential_file "config/google/client_secret_XXXXXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com.json"       --token_file "config/google/google_youtube_access_token.json"       --scope "$(cat config/google/google_youtube_scope.json)"
+
+Code
+----
+
+    import umuus_google_oauth
+
+    umuus_google_oauth.run(
+        credential_file="config/google/client_secret_XXXXXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com.json",
+        token_file="config/google/google_youtube_access_token.json",
+        scope="$(cat config/google/google_youtube_scope.json)",
+    )
 
 Example
 -------
@@ -19,6 +32,7 @@ Example
     $ umuus_google_oauth
 
     >>> import umuus_google_oauth
+
 
 Authors
 -------
