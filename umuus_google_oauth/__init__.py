@@ -171,7 +171,6 @@ __extra_options__ = {
 }
 # -- End Metadata --
 # -- Extra --
-umuus_google_oauth = __import__(__name__)
 # -- End Extra --
 
 
@@ -186,140 +185,132 @@ class OAuth(object):
     scope = attr.ib([])
     token_uri = attr.ib('https://accounts.google.com/o/oauth2/token')
     auto_refresh_url = attr.ib('https://accounts.google.com/o/oauth2/token')
-    code = None
-    response = None
-    token_file_data = None
-    credentials = None
-    service = None
-    session = None
-    server_app = None
-    server_thread = None
-    server_response = {}
+    code = attr.ib(None)
+    response = attr.ib(None)
+    token_file_data = attr.ib(None)
+    credentials = attr.ib(None)
+    service = attr.ib(None)
+    session = attr.ib(None)
+    server_app = attr.ib(None)
+    server_thread = attr.ib(None)
+    server_response = attr.ib({})
     server_host = attr.ib('0.0.0.0')
     server_port = attr.ib(8022)
     server_route = attr.ib('/oauth_redirect_uri')
     httpd = None
 
+    def close_server(self):
+        self.httpd.shutdown()
+        return self
 
-def close_server(oauth):
-    oauth.httpd.shutdown()
-    return oauth
+    def run_server(self):
+        self.server_app = flask.Flask(__name__)
 
+        def view():
+            response = dict(flask.request.args.items())
+            self.server_response = response
+            return flask.Response(
+                json.dumps(response),
+                content_type='application/json',
+            )
 
-def run_server(oauth):
-    oauth.server_app = flask.Flask(__name__)
-
-    def view():
-        response = dict(flask.request.args.items())
-        oauth.server_response = response
-        return flask.Response(
-            json.dumps(response),
-            content_type='application/json',
+        self.server_app.route(self.server_route)(view)
+        self.httpd = wsgiref.simple_server.make_server(
+            app=self.server_app,
+            host=self.server_host,
+            port=self.server_port,
         )
+        self.server_thread = threading.Thread(
+            target=lambda: self.httpd.serve_forever(poll_interval=0.5))
+        self.server_thread.start()
+        return self
 
-    oauth.server_app.route(oauth.server_route)(view)
-    oauth.httpd = wsgiref.simple_server.make_server(
-        app=oauth.server_app,
-        host=oauth.server_host,
-        port=oauth.server_port,
-    )
-    oauth.server_thread = threading.Thread(
-        target=lambda: oauth.httpd.serve_forever(poll_interval=0.5))
-    oauth.server_thread.start()
-    return oauth
+    def load(self):
+        self.credential_file_data = (self.credential_file_data or addict.Dict(
+            json.load(open(self.credential_file))))
+        return self
 
-
-def load(oauth):
-    oauth.credential_file_data = (oauth.credential_file_data or addict.Dict(
-        json.load(open(oauth.credential_file))))
-    return oauth
-
-
-def get_session(oauth):
-    oauth.session = requests_oauthlib.OAuth2Session(
-        client_id=oauth.credential_file_data.web.client_id,
-        scope=oauth.scope,
-        redirect_uri=oauth.credential_file_data.web.redirect_uris[0],
-        auto_refresh_url=oauth.auto_refresh_url,
-        auto_refresh_kwargs=dict(
-            client_id=oauth.credential_file_data.web.client_id,
-            client_secret=oauth.credential_file_data.web.client_secret,
-        ))
-    return oauth
-
-
-def write(oauth):
-    open(oauth.token_file, 'w').write(json.dumps(oauth.response))
-    return oauth
-
-
-def auth(oauth):
-    if not os.path.exists(oauth.token_file):
-        print(
-            oauth.session.authorization_url(
-                access_type="offline",
-                url=oauth.credential_file_data.web.auth_uri,
-                # prompt="select_account",
-                approval_prompt="force",
-            )[0])
-        while True:
-            if oauth.server_response:
-                oauth.code = oauth.server_response['code']
-                break
-            time.sleep(1)
-        oauth.response = addict.Dict(
-            oauth.session.fetch_token(
-                oauth.credential_file_data.web.token_uri,
-                client_secret=oauth.credential_file_data.web.client_secret,
-                code=oauth.code,
-                verify=False,
-                token_updater=(lambda *args: print('token_updater', args)),
+    def get_session(self):
+        self.session = requests_oauthlib.OAuth2Session(
+            client_id=self.credential_file_data.web.client_id,
+            scope=self.scope,
+            redirect_uri=self.credential_file_data.web.redirect_uris[0],
+            auto_refresh_url=self.auto_refresh_url,
+            auto_refresh_kwargs=dict(
+                client_id=self.credential_file_data.web.client_id,
+                client_secret=self.credential_file_data.web.client_secret,
             ))
-        # open(oauth.token_file, 'w').write(json.dumps(oauth.response))
-    else:
-        oauth.token_file_data = (oauth.token_file_data or addict.Dict(
-            json.load(open(oauth.token_file))))
-        if datetime.datetime.fromtimestamp(
-                oauth.token_file_data.expires_at) < datetime.datetime.utcnow():
-            oauth.response = addict.Dict(
-                oauth.session.refresh_token(
-                    oauth.token_uri, oauth.token_file_data.refresh_token))
-            # open(oauth.token_file, 'w').write(json.dumps(oauth.response))
+        return self
+
+    def write(self):
+        open(self.token_file, 'w').write(json.dumps(self.response))
+        return self
+
+    def auth(self):
+        if not os.path.exists(self.token_file):
+            print(
+                self.session.authorization_url(
+                    access_type="offline",
+                    url=self.credential_file_data.web.auth_uri,
+                    # prompt="select_account",
+                    approval_prompt="force",
+                )[0])
+            while True:
+                if self.server_response:
+                    self.code = self.server_response['code']
+                    break
+                time.sleep(1)
+            self.response = addict.Dict(
+                self.session.fetch_token(
+                    self.credential_file_data.web.token_uri,
+                    client_secret=self.credential_file_data.web.client_secret,
+                    code=self.code,
+                    verify=False,
+                    token_updater=(lambda *args: print('token_updater', args)),
+                ))
+            # open(self.token_file, 'w').write(json.dumps(self.response))
         else:
-            oauth.response = addict.Dict(oauth.token_file_data)
-    return oauth
+            self.token_file_data = (self.token_file_data or addict.Dict(
+                json.load(open(self.token_file))))
+            if datetime.datetime.fromtimestamp(self.token_file_data.expires_at
+                                               ) < datetime.datetime.utcnow():
+                self.response = addict.Dict(
+                    self.session.refresh_token(
+                        self.token_uri, self.token_file_data.refresh_token))
+                # open(self.token_file, 'w').write(json.dumps(self.response))
+            else:
+                self.response = addict.Dict(self.token_file_data)
+        return self
+
+    def get_credentials(self):
+        self.credentials = google.oauth2.credentials.Credentials(
+            self.response.access_token,
+            refresh_token=self.response.refresh_token,
+            token_uri=self.token_uri,
+            client_id=self.credential_file_data.web.client_id,
+            client_secret=self.credential_file_data.web.client_secret)
+        return self
+
+    def get_service(self):
+        self.service = apiclient.discovery.build(
+            self.serviceName,
+            self.version,
+            credentials=self.credentials,
+        )
+        return self
 
 
-def get_credentials(oauth):
-    oauth.credentials = google.oauth2.credentials.Credentials(
-        oauth.response.access_token,
-        refresh_token=oauth.response.refresh_token,
-        token_uri=oauth.token_uri,
-        client_id=oauth.credential_file_data.web.client_id,
-        client_secret=oauth.credential_file_data.web.client_secret)
-    return oauth
-
-
-def get_service(oauth):
-    oauth.service = apiclient.discovery.build(
-        oauth.serviceName,
-        oauth.version,
-        credentials=oauth.credentials,
-    )
-    return oauth
-
-
-def run(file=None, **kwargs):  # type: None
-    oauth = OAuth(**dict((json.load(open(file)) if file else {}), **kwargs))
-    oauth = load(oauth)
-    oauth = run_server(oauth)
-    oauth = get_session(oauth)
-    oauth = auth(oauth)
-    oauth = write(oauth)
-    oauth = get_credentials(oauth)
-    oauth = get_service(oauth)
-    oauth = close_server(oauth)
-    return oauth
+def run(file=None, options={}):
+    return OAuth(
+        **dict((file and json.load(open(file))or {}), **options))\
+        .load()\
+        .run_server()\
+        .get_session()\
+        .auth()\
+        .write()\
+        .get_credentials()\
+        .get_service()\
+        .close_server()
 
 
 def test_main():  # type: None
