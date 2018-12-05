@@ -13,6 +13,28 @@ Installation
 Command Line
 ------------
 
+config.json::
+
+    {
+        "credential_file": "config/google/client_secret_XXXXXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com.json",
+        "token_file": "config/google/google_youtube_access_token.json",
+        "scope": [
+            "https://www.googleapis.com/auth/cloud-translation",
+            "https://www.googleapis.com/auth/youtube.readonly",
+            "https://www.googleapis.com/auth/youtube",
+            "https://www.googleapis.com/auth/youtube.force-ssl",
+            "https://www.googleapis.com/auth/youtubepartner",
+            "https://www.googleapis.com/auth/yt-analytics.readonly",
+            "https://www.googleapis.com/auth/yt-analytics-monetary.readonly"
+        ]
+    }
+
+----
+
+    $ python -m umuus_google_oauth run --file config.json
+
+----
+
     $ python -m umuus_google_oauth run       --credential_file "config/google/client_secret_XXXXXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com.json"       --token_file "config/google/google_youtube_access_token.json"       --scope "$(cat config/google/google_youtube_scope.json)"
 
 Code

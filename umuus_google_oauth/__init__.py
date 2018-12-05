@@ -32,6 +32,28 @@ Installation
 Command Line
 ------------
 
+config.json::
+
+    {
+        "credential_file": "config/google/client_secret_XXXXXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com.json",
+        "token_file": "config/google/google_youtube_access_token.json",
+        "scope": [
+            "https://www.googleapis.com/auth/cloud-translation",
+            "https://www.googleapis.com/auth/youtube.readonly",
+            "https://www.googleapis.com/auth/youtube",
+            "https://www.googleapis.com/auth/youtube.force-ssl",
+            "https://www.googleapis.com/auth/youtubepartner",
+            "https://www.googleapis.com/auth/yt-analytics.readonly",
+            "https://www.googleapis.com/auth/yt-analytics-monetary.readonly"
+        ]
+    }
+
+----
+
+    $ python -m umuus_google_oauth run --file config.json
+
+----
+
     $ python -m umuus_google_oauth run \
       --credential_file "config/google/client_secret_XXXXXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com.json" \
       --token_file "config/google/google_youtube_access_token.json" \
@@ -70,27 +92,18 @@ GPLv3 <https://www.gnu.org/licenses/>
 # -- BaseImport --
 import os
 import sys
-import re
 import datetime
 import json
-import types
-import typing
 import threading
 import time
 import wsgiref.simple_server
-import functools
-import itertools
 import logging
 logger = logging.getLogger(__name__)
 import fire
 import attr
 import addict
-import oauthlib.oauth2
 import apiclient.discovery
 import apiclient.http
-import oauth2client.client
-import httplib2
-import urllib.parse
 import requests_oauthlib
 import flask
 import google.oauth2.credentials
@@ -184,16 +197,16 @@ class OAuth(object):
     server_response = {}
     server_host = attr.ib('0.0.0.0')
     server_port = attr.ib(8022)
-    server_route = '/oauth_redirect_uri'
+    server_route = attr.ib('/oauth_redirect_uri')
     httpd = None
 
 
-def close_server(oauth=None):
+def close_server(oauth):
     oauth.httpd.shutdown()
     return oauth
 
 
-def run_server(oauth=None):
+def run_server(oauth):
     oauth.server_app = flask.Flask(__name__)
 
     def view():
@@ -216,13 +229,13 @@ def run_server(oauth=None):
     return oauth
 
 
-def load(oauth=None):
-    oauth.credential_file_data = addict.Dict(
-        json.load(open(oauth.credential_file)))
+def load(oauth):
+    oauth.credential_file_data = (oauth.credential_file_data or addict.Dict(
+        json.load(open(oauth.credential_file))))
     return oauth
 
 
-def get_session(oauth=None):
+def get_session(oauth):
     oauth.session = requests_oauthlib.OAuth2Session(
         client_id=oauth.credential_file_data.web.client_id,
         scope=oauth.scope,
@@ -235,7 +248,12 @@ def get_session(oauth=None):
     return oauth
 
 
-def auth(oauth=None):
+def write(oauth):
+    open(oauth.token_file, 'w').write(json.dumps(oauth.response))
+    return oauth
+
+
+def auth(oauth):
     if not os.path.exists(oauth.token_file):
         print(
             oauth.session.authorization_url(
@@ -257,21 +275,22 @@ def auth(oauth=None):
                 verify=False,
                 token_updater=(lambda *args: print('token_updater', args)),
             ))
-        open(oauth.token_file, 'w').write(json.dumps(oauth.response))
+        # open(oauth.token_file, 'w').write(json.dumps(oauth.response))
     else:
-        oauth.token_file_data = addict.Dict(json.load(open(oauth.token_file)))
+        oauth.token_file_data = (oauth.token_file_data or addict.Dict(
+            json.load(open(oauth.token_file))))
         if datetime.datetime.fromtimestamp(
                 oauth.token_file_data.expires_at) < datetime.datetime.utcnow():
             oauth.response = addict.Dict(
                 oauth.session.refresh_token(
                     oauth.token_uri, oauth.token_file_data.refresh_token))
-            open(oauth.token_file, 'w').write(json.dumps(oauth.response))
+            # open(oauth.token_file, 'w').write(json.dumps(oauth.response))
         else:
             oauth.response = addict.Dict(oauth.token_file_data)
     return oauth
 
 
-def get_credentials(oauth=None):
+def get_credentials(oauth):
     oauth.credentials = google.oauth2.credentials.Credentials(
         oauth.response.access_token,
         refresh_token=oauth.response.refresh_token,
@@ -281,7 +300,7 @@ def get_credentials(oauth=None):
     return oauth
 
 
-def get_service(oauth=None):
+def get_service(oauth):
     oauth.service = apiclient.discovery.build(
         oauth.serviceName,
         oauth.version,
@@ -290,15 +309,16 @@ def get_service(oauth=None):
     return oauth
 
 
-def run(**kwargs):  # type: None
-    oauth = OAuth(**kwargs)
-    oauth = load(oauth=oauth)
-    oauth = run_server(oauth=oauth)
-    oauth = get_session(oauth=oauth)
-    oauth = auth(oauth=oauth)
-    oauth = get_credentials(oauth=oauth)
-    oauth = get_service(oauth=oauth)
-    oauth = close_server(oauth=oauth)
+def run(file=None, **kwargs):  # type: None
+    oauth = OAuth(**dict((json.load(open(file)) if file else {}), **kwargs))
+    oauth = load(oauth)
+    oauth = run_server(oauth)
+    oauth = get_session(oauth)
+    oauth = auth(oauth)
+    oauth = write(oauth)
+    oauth = get_credentials(oauth)
+    oauth = get_service(oauth)
+    oauth = close_server(oauth)
     return oauth
 
 
